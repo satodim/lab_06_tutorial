@@ -1,994 +1,321 @@
-# lab_02
-
-## Tutorial
-
-### Проинициализируем нужные для работы переменные, перейдем в рабочее пространство и активируем ранее подготовленные скрипты.
+# lab_05
+##Tutorial
+### 1. Подготовка окружения и переход в рабочие папки
 ```sh
-export GITHUB_USERNAME=satodim
-export GITHUB_EMAIL=<адрес_почтового_ящика>
-export GITHUB_TOKEN=<сгенирированный_токен>
-alias edit=nano
-
+export GITHUB_USERNAME=<имя_пользователя>
+alias gsed=sed
 cd ${GITHUB_USERNAME}/workspace
+pushd .
 source scripts/activate
 ```
-
-### Теперь создадим папку `.config`, в ней файл конфигурации `hub` с необходимыми переменными:
-
+### 2. Клонирование предыдущей работы
 ```sh
-mkdir ~/.config
-cat > ~/.config/hub <<EOF
-github.com:
-- user: ${GITHUB_USERNAME}
-  oauth_token: ${GITHUB_TOKEN}
-  protocol: https
+git clone https://github.com/${GITHUB_USERNAME}/lab04 projects/lab05
+cd projects/lab05
+git remote remove origin
+git remote add origin https://github.com/${GITHUB_USERNAME}/lab05
+```
+### 3. Добавление Google Test   
+```sh
+mkdir third-party
+git submodule add https://github.com/google/googletest third-party/gtest
+cd third-party/gtest && git checkout release-1.8.1 && cd ../..
+```
+*Вывод:*
+```sh
+Cloning into '/home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest'...
+remote: Enumerating objects: 28627, done.
+remote: Counting objects: 100% (61/61), done.
+remote: Compressing objects: 100% (46/46), done.
+remote: Total 28627 (delta 32), reused 15 (delta 15), pack-reused 28566 (from 2)
+Receiving objects: 100% (28627/28627), 13.74 MiB | 1.92 MiB/s, done.
+Resolving deltas: 100% (21273/21273), done.
+```
+*Вывод2:*
+```sh
+Note: switching to 'release-1.8.1'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 2fe3bd99 Merge pull request #1433 from dsacre/fix-clang-warnings
+```
+### 4.Настройка Cmake для тестов
+```sh
+sed -i '/option(BUILD_EXAMPLES...)/a\option(BUILD_TESTS "Build tests" OFF)' CMakeLists.txt
+cat >> CMakeLists.txt <<EOF
+if(BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(third-party/gtest)
+  file(GLOB \${PROJECT_NAME}_TEST_SOURCES tests/*.cpp)
+  add_executable(check \${\${PROJECT_NAME}_TEST_SOURCES})
+  target_link_libraries(check \${PROJECT_NAME} gtest_main)
+  add_test(NAME check COMMAND check)
+endif()
 EOF
-git config --global hub.protocol https
 ```
-последней командой установим протокол `https` для работы с гитхабом.
-
-Создаём папку для второй лабы и переходим туда
+### 5. Создание теста
 ```sh
-mkdir projects/lab_02_rework && cd projects/lab_02_rework
-```
-Создаем новый репозиторий
-```sh
-git init
-```
+tests/test1.cpp <<EOF
+#include <print.hpp>
 
-Вывод предупреждает о том, что текущая ветка называется `master`:
-```
-hint: Using 'master' as the name for the initial branch. This default branch name
-hint: is subject to change. To configure the initial branch name to use in all
-hint: of your new repositories, which will suppress this warning, call:
-hint: 
-hint:  git config --global init.defaultBranch <name>
-hint: 
-hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
-hint: 'development'. The just-created branch can be renamed via this command:
-hint: 
-hint:  git branch -m <name>
-Initialized empty Git repository in /home/vboxuser/satodim/workspace/workspace/projects/lab_02/.git/
-```
-На гитхабе главная ветка называется `main`, поэтому  переименуем локальную ветку `master` в `main`
+#include <gtest/gtest.h>
 
-```sh
-git branch -m main
-```
+TEST(Print, InFileStream)
+{
+  std::string filepath = "file.txt";
+  std::string text = "hello";
+  std::ofstream out{filepath};
 
-### Установим юзернейм и почту для гита:
-```sh
-git config --global user.name ${GITHUB_USERNAME}
-git config --global user.email ${GITHUB_EMAIL}
-```
+  print(text, out);
+  out.close();
 
-И проверим, что все пошло по плану:
-```sh
-git config -e --global
-```
+  std::string result;
+  std::ifstream in{filepath};
+  in >> result;
 
+  EXPECT_EQ(result, text);
+}
+EOF
 ```
-[hub]
-        protocol = https
-[user]
-        name = satodim
-        email = ...@gmail.com
-```
-### Все установилось правильно, привяжем локальную директорию с созданным удаленно репозиторием:
+### 6.  Сборка проекта с тестами
 ```sh
-git remote add origin https://github.com/${GITHUB_USERNAME}/lab_02.git
+cmake -H. -B_build -DBUILD_TESTS=ON
+cmake --build _build
 ```
+Получил ошибку из-за старой версии
+*Фикс:*
+```sh
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ rm -rf _build
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cd third-party/gtest
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest$ git checkout release-1.8.1
+HEAD is now at 2fe3bd99 Merge pull request #1433 from dsacre/fix-clang-warnings
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest$ cd ../..
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cmake -H. -B_build \
+  -DBUILD_TESTS=ON \
+  -DCMAKE_CXX_FLAGS="-Wno-error -Wno-maybe-uninitialized"
+```
+*Итоговы вывод:*
+```sh
+CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
 
-И загрузим все, что есть в этом репозитории, на наш компьютер
-```sh
-git pull origin main
-```
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
 
-Вывод предыдущей команды:
+
+-- The C compiler identification is GNU 13.3.0
+-- The CXX compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMake Deprecation Warning at third-party/gtest/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+CMake Deprecation Warning at third-party/gtest/googlemock/CMakeLists.txt:42 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+CMake Deprecation Warning at third-party/gtest/googletest/CMakeLists.txt:49 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+CMake Warning (dev) at third-party/gtest/googletest/cmake/internal_utils.cmake:239 (find_package):
+  Policy CMP0148 is not set: The FindPythonInterp and FindPythonLibs modules
+  are removed.  Run "cmake --help-policy CMP0148" for policy details.  Use
+  the cmake_policy command to set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  third-party/gtest/googletest/CMakeLists.txt:84 (include)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Found PythonInterp: /usr/bin/python3 (found version "3.12.3") 
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Configuring done (0.5s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cmake --build _build
+[  8%] Building CXX object CMakeFiles/print.dir/sources/print.cpp.o
+[ 16%] Linking CXX static library libprint.a
+[ 16%] Built target print
+[ 25%] Building CXX object third-party/gtest/googlemock/gtest/CMakeFiles/gtest.dir/src/gtest-all.cc.o
+[ 33%] Linking CXX static library libgtest.a
+[ 33%] Built target gtest
+[ 41%] Building CXX object third-party/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o
+[ 50%] Linking CXX static library libgtest_main.a
+[ 50%] Built target gtest_main
+[ 58%] Building CXX object CMakeFiles/check.dir/tests/test1.cpp.o
+[ 66%] Linking CXX executable check
+[ 66%] Built target check
+[ 75%] Building CXX object third-party/gtest/googlemock/CMakeFiles/gmock.dir/src/gmock-all.cc.o
+[ 83%] Linking CXX static library libgmock.a
+[ 83%] Built target gmock
+[ 91%] Building CXX object third-party/gtest/googlemock/CMakeFiles/gmock_main.dir/src/gmock_main.cc.o
+[100%] Linking CXX static library libgmock_main.a
+[100%] Built target gmock_main
+```
+### 7. Запуск тестов
 ```sh
-Username for 'https://github.com': satodim
-Password for 'https://satodim@github.com': 
-Enumerating objects: 3, done.
-Counting objects: 100% (3/3), done.
-Writing objects: 100% (3/3), 219 bytes | 109.00 KiB/s, done.
-Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
-To https://github.com/satodim/lab_02_rework.git
+cmake --build _build --target test
+_build/check
+cmake --build _build --target test -- ARGS=--verbose
+```
+*ВЫводы:*
+```sh
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cmake --build _build --target test
+Running tests...
+Test project /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build
+    Start 1: check
+1/1 Test #1: check ............................   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.01 sec
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ _build/check
+Running main() from /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest/googletest/src/gtest_main.cc
+[==========] Running 1 test from 1 test case.
+[----------] Global test environment set-up.
+[----------] 1 test from Print
+[ RUN      ] Print.InFileStream
+[       OK ] Print.InFileStream (0 ms)
+[----------] 1 test from Print (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test case ran. (1 ms total)
+[  PASSED  ] 1 test.
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cmake --build _build --target test -- ARGS=--verbose
+Running tests...
+UpdateCTestConfiguration  from :/home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build/DartConfiguration.tcl
+Test project /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+    Start 1: check
+
+1: Test command: /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build/check
+1: Working Directory: /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build
+1: Test timeout computed to be: 10000000
+1: Running main() from /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest/googletest/src/gtest_main.cc
+1: [==========] Running 1 test from 1 test case.
+1: [----------] Global test environment set-up.
+1: [----------] 1 test from Print
+1: [ RUN      ] Print.InFileStream
+1: [       OK ] Print.InFileStream (0 ms)
+1: [----------] 1 test from Print (0 ms total)
+1: 
+1: [----------] Global test environment tear-down
+1: [==========] 1 test from 1 test case ran. (1 ms total)
+1: [  PASSED  ] 1 test.
+1/1 Test #1: check ............................   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.01 sec
+```
+### 8. Работа с Github Actions, потому что мы не работаем с Travis
+```sh
+mkdir -p .github/workflows
+nano .github/workflows/ci.yml
+```
+ci.yml
+```sh
+name: CMake Build and Test
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/_build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTS=ON
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/_build --config ${{env.BUILD_TYPE}}
+
+    - name: Test
+      working-directory: ${{github.workspace}}/_build
+      run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+```
+### 9. Осталось только  закоммитить изменения и  запушить все на удаленный репозиторий
+```sh
+git add .github CMakeLists.txt file.txt tests/
+git commit -m "added tests and workflows"
+```
+*Вывод:*
+```sh
+mmit -m "added tests and workflows"
+[main 1a12423] added tests and workflows
+ 4 files changed, 95 insertions(+)
+ create mode 100644 .github/workflows/ci.yml
+ create mode 100644 CMakeLists.txt
+ create mode 100644 file.txt
+ create mode 100644 tests/test1.cpp
+```
+```sh
+git push origin main
+```
+*Вывод:*
+```sh
+Enumerating objects: 50, done.
+Counting objects: 100% (50/50), done.
+Delta compression using up to 2 threads
+Compressing objects: 100% (30/30), done.
+Writing objects: 100% (50/50), 13.65 KiB | 6.83 MiB/s, done.
+Total 50 (delta 12), reused 36 (delta 10), pack-reused 0
+remote: Resolving deltas: 100% (12/12), done.
+To https://github.com/satodim/lab_05_tutorial
  * [new branch]      main -> main
-
 ```
- 
-### Создадим `README.md`
-```sh
-touch README.md
-```
- 
-### Теперь посмотрим на статусы файлов в папке
-```sh
-git status
-```
- 
-```
-
-No commits yet
-
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-	README.md
-
-nothing added to commit but untracked files present (use "git add" to track)
-
-```
-
-### Видно, что новосозданный README пока что никак не участвует в репозитории, поэтому мы можем его добавить и сделать новый коммит:
-```sh
-git add README.md
-git commit -m "added README.md"
-```
-
-```
-[main (root-commit) 47d8633] added README.md
- 1 file changed, 0 insertions(+), 0 deletions(-)
- create mode 100644 README.md
-
-```
-
-### Запушим локальный коммит на удаленный репозиторий
-```sh
-git push origin main
-```
-
-```
-Username for 'https://github.com': satodim
-Password for 'https://satodim@github.com': 
-Enumerating objects: 4, done.
-Counting objects: 100% (4/4), done.
-Delta compression using up to 2 threads
-Compressing objects: 100% (2/2), done.
-Writing objects: 100% (3/3), 282 bytes | 282.00 KiB/s, done.
-Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
-To https://github.com/satodim/lab_02.git
-   9a76e6f..200709d  main -> main
-```
-
-На гитхабе появился README.
-
-### Теперь удаленно создадим `.gitignore` и загрузим к нам.
-
-На всякий случай убедимся, что все действительно загрузилось:
-```sh
-ls -a
-```
-
-```
-.  ..  .git  .gitignore  README.md
-```
-Действительно, `.gitignore` загрузился
-
-### Посмотрим на историю репозитория 
-```sh
-git log
-```
-
-```
-commit 6d18420accea3fed9081f83583cfcd58ac0cfc1b (HEAD -> main, origin/main)
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 09:01:02 2026 +0300
-
-    Create .gitignore
-
-commit 47d86333afde59b4097550e9d33ac9f7c45996ca
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 05:55:46 2026 +0000
-
-    added README.md
-
-```
-### Ну и теперь создадим несколько `cpp` файлов
-
-```sh
-mkdir sources
-mkdir include
-mkdir examples
-
-cat > sources/print.cpp <<EOF
-#include <print.hpp>
-
-void print(const std::string& text, std::ostream& out)
-{
-  out << text;
-}
-
-void print(const std::string& text, std::ofstream& out)
-{
-  out << text;
-}
-EOF
-
-cat > include/print.hpp <<EOF
-#include <fstream>
-#include <iostream>
-#include <string>
-
-void print(const std::string& text, std::ofstream& out);
-void print(const std::string& text, std::ostream& out = std::cout);
-EOF
-
-cat > examples/example1.cpp <<EOF
-#include <print.hpp>
-
-int main(int argc, char** argv)
-{
-  print("hello");
-}
-EOF
-
-cat > examples/example2.cpp <<EOF
-#include <print.hpp>
-
-#include <fstream>
-
-int main(int argc, char** argv)
-{
-  std::ofstream file("log.txt");
-  print(std::string("hello"), file);
-}
-EOF
-```
-
-### Коммитим и пушим их:
-```sh
-git add .
-git commit -m"added sources"
-git push origin master
-```
-# Homework
-
-## Part I
-
-### Создайте пустой репозиторий на сервисе github.com
-
-Создали **этот** репозиторий
-
-### Выполните инструкцию по созданию первого коммита на странице репозитория, созданного на предыдущем шаге.
-
-```sh
-git init
-git branch -m main
-git remote add origin https://github.com/satodim/lab_02_rework
-git pull origin main
-```
-
-Вывод последней команды:
-
-```
-Username for 'https://github.com': satodim
-Password for 'https://satodim@github.com': 
-Enumerating objects: 10, done.
-Counting objects: 100% (10/10), done.
-Delta compression using up to 2 threads
-Compressing objects: 100% (7/7), done.
-Writing objects: 100% (9/9), 929 bytes | 929.00 KiB/s, done.
-Total 9 (delta 0), reused 0 (delta 0), pack-reused 0
-To https://github.com/satodim/lab_02_rework.git
-   6d18420..7fdb656  main -> main
-```
-
-### Создайте файл `hello_world.cpp` в локальной копии репозитория (который должен был появиться на шаге 2). Реализуйте программу Hello world на языке C++ используя плохой стиль кода. Например, после заголовочных файлов вставьте строку `using namespace std;`.
-
-Этот файл:
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-	cout << "Hello world!" << name << endl;
-	return 0;
-}
-```
-
-### Добавьте этот файл в локальную копию репозитория.
-```sh
-git add hello_world.cpp
-```
-
-### Закоммитьте изменения с осмысленным сообщением.
-```sh
-git commit -m "hello_world.cpp"
-```
-
-```
-[main 83c293e] hello_world.cpp
- 1 file changed, 7 insertions(+)
- create mode 100644 hello_world.cpp
-```
-### Изменитьте исходный код так, чтобы программа через стандартный поток ввода запрашивалось имя пользователя. А в стандартный поток вывода печаталось сообщение Hello world from @name, где @name имя пользователя.
-
-Новая версия программы
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-	string name;
-	cin >> name;
-	cout << "Hello world from " << name << endl;
-	return 0;
-}
-```
-
-### Закоммитьте новую версию программы. Почему не надо добавлять файл повторно `git add`?
-
-```sh
-git commit -a -m "added hello_world.cpp"
-```
-
-`-a` означает коммит всех измененных файлов, чтобы этот файл смог закоммититься.
-
-### Запуште изменения в удалёный репозиторий.
-
-```sh
-git push origin main
-```
-
-```
-Username for 'https://github.com': satodim
-Password for 'https://satodim@github.com': 
-Enumerating objects: 7, done.
-Counting objects: 100% (7/7), done.
-Delta compression using up to 2 threads
-Compressing objects: 100% (6/6), done.
-Writing objects: 100% (6/6), 710 bytes | 710.00 KiB/s, done.
-Total 6 (delta 2), reused 0 (delta 0), pack-reused 0
-remote: Resolving deltas: 100% (2/2), completed with 1 local object.
-To https://github.com/satodim/lab_02_rework.git
-   7fdb656..da64f08  main -> main
-
-```
-
-### Проверьте, что история коммитов доступна в удалённом репозитории.
-
-```sh
-git log
-```
-
-```
-commit da64f0863055e8e698ab45eae44a9f93682e3b55 (HEAD -> main, origin/main)
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 06:10:11 2026 +0000
-
-    added hello_world.cpp
-
-commit 83c293ee46d965dedf8bfe8df46a39d96a5d9641
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 06:09:01 2026 +0000
-
-    hello_world.cpp
-
-commit 7fdb6566f1b29be58b3aa77c8cb027db3f24730a
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 06:04:33 2026 +0000
-
-    added sources
-
-commit 6d18420accea3fed9081f83583cfcd58ac0cfc1b
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 09:01:02 2026 +0300
-
-    Create .gitignore
-
-```
-## Part II
-
-### В локальной копии репозитория создайте локальную ветку `patch1`.
-
-```sh
-git checkout -b patch1
-```
-
-### Внесите изменения в ветке `patch1` по исправлению кода и избавления от `using namespace std;`.
-
-Новый код:
-```cpp
-#include <iostream>
-
-int main() {
-	std::string name;
-	std::cin >> name;
-	std::cout << "Hello world from " << name << std::endl;
-	return 0;
-}
-```
-
-### **commit**, **push** локальную ветку в удалённый репозиторий.
-
-``` sh
-git commit -a -m "removed using namespace std"
-```
-
-```
-[patch1 17308f9] removed using namespace std
- 1 file changed, 3 insertions(+), 4 deletions(-)
-
-```
-
-```sh
-git push origin patch1
-```
-
-```
-Username for 'https://github.com': satodim
-Password for 'https://satodim@github.com': 
-Enumerating objects: 5, done.
-Counting objects: 100% (5/5), done.
-Delta compression using up to 2 threads
-Compressing objects: 100% (3/3), done.
-Writing objects: 100% (3/3), 375 bytes | 187.00 KiB/s, done.
-Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
-remote: Resolving deltas: 100% (1/1), completed with 1 local object.
-remote: 
-remote: Create a pull request for 'patch1' on GitHub by visiting:
-remote:      https://github.com/satodim/lab_02_rework/pull/new/patch1
-remote: 
-To https://github.com/satodim/lab_02_rework.git
- * [new branch]      patch1 -> patch1
-
-```
-
-### Проверьте, что ветка `patch1` доступна в удалённом репозитории.
-
-```sh
-git log
-```
-
-```
-commit 17308f944f55bb7adb4f15fc7885b183309b23e1 (HEAD -> patch1, origin/patch1)
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 06:13:21 2026 +0000
-
-    removed using namespace std
-
-commit da64f0863055e8e698ab45eae44a9f93682e3b55 (origin/main, main)
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 06:10:11 2026 +0000
-
-    added hello_world.cpp
-
-commit 83c293ee46d965dedf8bfe8df46a39d96a5d9641
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 06:09:01 2026 +0000
-
-    hello_world.cpp
-
-commit 7fdb6566f1b29be58b3aa77c8cb027db3f24730a
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 06:04:33 2026 +0000
-
-    added sources
-```
-
-### Я сделал pull-request удаленно на гитхабе. В этом убедимся с помощью утилиты `gh`.
-```sh
-gh pr view --json number,title,author
-```
-вывод:
-```
-{
-  "author": {
-    "id": "U_kgDOCjA-pg",
-    "is_bot": false,
-    "login": "satodim",
-    "name": "satodim"
-  },
-  "number": 1,
-  "title": "removed using namespace std"
-}
-```
-
-### В локальной копии в ветке `patch1` добавьте в исходный код комментарии.
-
-```cpp
-// Подключаем библиотеку ввода-вывода
-#include <iostream>
-
-int main() {
-	// Создаем строку для имени
-	std::string name;
-	// Принимаем имя
-	std::cin >> name;
-	// Печатаем
-	std::cout << "Hello world from " << name << std::endl;
-	return 0;
-}
-```
-
-### commit, push
-
-```sh
-git commit -a -m "added comments"
-```
-
-```
-it -a -m "added comments"
-[patch1 ec63d76] added comments
- 1 file changed, 6 insertions(+)
-
-```
-
-```sh
-git push origin patch1
-```
-
-```
-Username for 'https://github.com': satodim
-Password for 'https://satodim@github.com': 
-Enumerating objects: 5, done.
-Counting objects: 100% (5/5), done.
-Delta compression using up to 2 threads
-Compressing objects: 100% (3/3), done.
-Writing objects: 100% (3/3), 491 bytes | 491.00 KiB/s, done.
-Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
-remote: Resolving deltas: 100% (1/1), completed with 1 local object.
-To https://github.com/satodim/lab_02_rework.git
-   17308f9..ec63d76  patch1 -> patch1
-```
-
-### Проверьте, что новые изменения есть в созданном на шаге 5 pull-request
-
-```sh
-gh pr view --json number,title,author,commits
-```
-
-```
-{
-  "author": {
-    "id": "U_kgDOCjA-pg",
-    "is_bot": false,
-    "login": "satodim",
-    "name": "satodim"
-  },
-  "commits": [
-    {
-      "authoredDate": "2026-04-01T06:13:21Z",
-      "authors": [
-        {
-          "email": "vovkakursk8@gmail.com",
-          "id": "U_kgDOCjA-pg",
-          "login": "satodim",
-          "name": "satodim"
-        }
-      ],
-      "committedDate": "2026-04-01T06:13:21Z",
-      "messageBody": "",
-      "messageHeadline": "removed using namespace std",
-      "oid": "17308f944f55bb7adb4f15fc7885b183309b23e1"
-    },
-    {
-      "authoredDate": "2026-04-01T06:16:53Z",
-      "authors": [
-        {
-          "email": "vovkakursk8@gmail.com",
-          "id": "U_kgDOCjA-pg",
-          "login": "satodim",
-          "name": "satodim"
-        }
-      ],
-      "committedDate": "2026-04-01T06:16:53Z",
-      "messageBody": "",
-      "messageHeadline": "added comments",
-      "oid": "ec63d76a70b41ab449700fecb50c6f5099986f96"
-    }
-  ],
-  "number": 1,
-  "title": "removed using namespace std"
-}
-```
-
-### В удалённый репозитории выполните слияние PR `patch1 -> master` и удалите ветку `patch1` в удаленном репозитории.
-
-Сделал это на гитхабе
-
-### Локально выполните **pull**.
-
-```sh
-git checkout main
-git pull origin main
-```
-
-```
-remote: Enumerating objects: 1, done.
-remote: Counting objects: 100% (1/1), done.
-remote: Total 1 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
-Unpacking objects: 100% (1/1), 896 bytes | 896.00 KiB/s, done.
-From https://github.com/satodim/lab_02_rework
- * branch            main       -> FETCH_HEAD
-   da64f08..58b9617  main       -> origin/main
-Updating da64f08..58b9617
-Fast-forward
- hello_world.cpp | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
-```
-
-### С помощью команды `git log` просмотрите историю в локальной версии ветки **main**.
-
-```
-commit 58b96171292f6386d087a290c1ed15d3961b5326 (HEAD -> main, origin/main)
-Merge: da64f08 ec63d76
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 09:17:50 2026 +0300
-
-    Merge pull request #1 from satodim/patch1
-    
-    removed using namespace std
-
-commit ec63d76a70b41ab449700fecb50c6f5099986f96 (origin/patch1, patch1)
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 06:16:53 2026 +0000
-
-    added comments
-
-commit 17308f944f55bb7adb4f15fc7885b183309b23e1
-Author: satodim <vovkakursk8@gmail.com>
-Date:   Wed Apr 1 06:13:21 2026 +0000
-
-    removed using namespace std
-
-commit da64f0863055e8e698ab45eae44a9f93682e3b55
-Author: satodim <vovkakursk8@gmail.com>
-```
-
-### Удалите локальную ветку `patch1`.
-
-```sh
-git branch -d patch1
-```
-
-```
-Deleted branch patch1 (was ec63d76).
-```
-## Part III
-
-### Создайте новую локальную ветку `patch2`.
-
-```sh
-git checkout -b patch2
-```
-
-### Измените code style с помощью утилиты `clang-format`. Например, используя опцию `-style=Mozilla`.
-
-```sh
-clang-format -style=Mozilla -i hello_world.cpp 
-```
-
-код:
-```cpp
-// Подключаем библиотеку ввода-вывода
-#include <iostream>
-
-int
-main()
-{
-  // Создаем строку для имени
-  std::string name;
-  // Принимаем имя
-  std::cin >> name;
-  // Печатаем
-  std::cout << "Hello world from " << name << std::endl;
-  return 0;
-}
-```
-
-### commit, push, создайте pull-request `patch2 -> master`
-
-```sh
-git commit -am "style: format code from myself to Mozilla style" 
-
-```
-
-```
-[patch2 eb3d595] style: format code from myself to Mozilla style
- 1 file changed, 10 insertions(+), 8 deletions(-)
-```
-
-```sh
-git push -u origin patch2
-```
-
-```
-Enumerating objects: 5, done.
-Counting objects: 100% (5/5), done.
-Delta compression using up to 2 threads
-Compressing objects: 100% (3/3), done.
-Writing objects: 100% (3/3), 420 bytes | 420.00 KiB/s, done.
-Total 3 (delta 2), reused 0 (delta 0), pack-reused 0
-remote: Resolving deltas: 100% (2/2), completed with 2 local objects.
-remote: 
-remote: Create a pull request for 'patch2' on GitHub by visiting:
-remote:      https://github.com/satodim/lab_02_rework2/pull/new/patch2
-remote: 
-To https://github.com/satodim/lab_02_rework2.git
- * [new branch]      patch2 -> patch2
-branch 'patch2' set up to track 'origin/patch2'.
-```
-
-Также сделаем pull-request с помощью утилиты`gh`:
-
-```sh
-gh pr create --base main --head patch2 --title "Style: transform style code style: format code from myself to Mozilla style" --body "Formatted to Mozilla style"
-```
-
-```
-reate --base main --head patch2 --title "Style: transform style code style: format code from myself to Mozilla style" --body "Formatted to Mozilla style"
-
-Creating pull request for patch2 into main in satodim/lab_02_rework2
-```
-
-### В ветке `main` в удаленном репозитории измените комментарии, например, расставьте знаки препинания, переведите комментарии на другой язык.
-
-Переключимся на векту `main`
-
-```sh
-git checkout main
-```
-
-И переведем комментарии на английский:
-```cpp
-// including standard IO library
-#include <iostream>
-
-int main() {
-	// creating string for name
-	std::string name;
-	// recieving name
-	std::cin >> name;
-	// printing "hello world from name"
-	std::cout << "Hello world from " << name << std::endl;
-	return 0;
-}
-```
-
-Ну и по классике:
-
-```sh
-git commit -a -m "translated comments"
-```
-
-```
-[main be64376] translated comments
- 1 file changed, 4 insertions(+), 4 deletions(-)
-```
-
-```sh
-git push origin main
-```
-
-```
-Enumerating objects: 5, done.
-Counting objects: 100% (5/5), done.
-Delta compression using up to 2 threads
-Compressing objects: 100% (3/3), done.
-Writing objects: 100% (3/3), 423 bytes | 423.00 KiB/s, done.
-Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
-remote: Resolving deltas: 100% (1/1), completed with 1 local object.
-To https://github.com/satodim/lab_02_rework2.git
-   072aa27..be64376  main -> main
-```
-
-### Теперь переключимся на ветку `patch2`
-```sh
-git checkout patch2
-```
-
-И проверим наш pull-request, в этот раз посмотрим в том числе и на параметр `mergeable`
-```sh
-gh pr view --json number,title,author,commits,mergeable
-```
-
-```
-{
-  "author": {
-    "id": "U_kgDOCjA-pg",
-    "is_bot": false,
-    "login": "satodim",
-    "name": "satodim"
-  },
-  "commits": [
-    {
-      "authoredDate": "2026-04-01T06:20:37Z",
-      "authors": [
-        {
-          "email": "vovkakursk8@gmail.com",
-          "id": "U_kgDOCjA-pg",
-          "login": "satodim",
-          "name": "satodim"
-        }
-      ],
-      "committedDate": "2026-04-01T06:20:37Z",
-      "messageBody": "",
-      "messageHeadline": "changed code style",
-      "oid": "369623bb9d5a230c748a91990d1cabed385b5f82"
-    }
-  ],
-  "mergeable": "CONFLICTING",
-  "number": 2,
-  "title": "changed code style"
-}
-```
-
-И как можно заметить, этот параметр равен `CONFLICTING`, то есть действительно присутствуют конфликты.
-
-### Для этого локально выполните `pull` + `rebase` (точную последовательность команд, следует узнать самостоятельно). Исправьте конфликты.
-
-Переключимся на ветку patch2 и попробуем сделать ребейз
-```sh
-git checkout patch2
-git rebase main 
-```
- Я получил следующий вывод:
-
-```
-Auto-merging hello_world.cpp
-CONFLICT (content): Merge conflict in hello_world.cpp
-error: could not apply eb3d595... style: format code from myself to Mozilla style
-hint: Resolve all conflicts manually, mark them as resolved with
-hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
-hint: You can instead skip this commit: run "git rebase --skip".
-hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
-Could not apply eb3d595... style: format code from myself to Mozilla style
-```
-посмотрим git status:
-```sh
-git status
-```
-```sh
-nteractive rebase in progress; onto be64376
-Last command done (1 command done):
-   pick eb3d595 style: format code from myself to Mozilla style
-No commands remaining.
-You are currently rebasing branch 'patch2' on 'be64376'.
-  (fix conflicts and then run "git rebase --continue")
-  (use "git rebase --skip" to skip this patch)
-  (use "git rebase --abort" to check out the original branch)
-
-Unmerged paths:
-  (use "git restore --staged <file>..." to unstage)
-  (use "git add <file>..." to mark resolution)
-	both modified:   hello_world.cpp
-
-no changes added to commit (use "git add" and/or "git commit -a")
-```
-
-Возврящаемся к версии кода:
-```sh
-git restore --source="eb3d595" hello_world.cpp 
-git status
-```
-*Вывод:*
-```sh
-interactive rebase in progress; onto be64376
-Last command done (1 command done):
-   pick eb3d595 style: format code from myself to Mozilla style
-No commands remaining.
-You are currently rebasing branch 'patch2' on 'be64376'.
-  (fix conflicts and then run "git rebase --continue")
-  (use "git rebase --skip" to skip this patch)
-  (use "git rebase --abort" to check out the original branch)
-
-Unmerged paths:
-  (use "git restore --staged <file>..." to unstage)
-  (use "git add <file>..." to mark resolution)
-	both modified:   hello_world.cpp
-
-no changes added to commit (use "git add" and/or "git commit -a")
-```
-
-```sh
-git  add hello_world.cpp
-git status
-```
-*Вывод:*
-```sh
-interactive rebase in progress; onto be64376
-Last command done (1 command done):
-   pick eb3d595 style: format code from myself to Mozilla style
-No commands remaining.
-You are currently rebasing branch 'patch2' on 'be64376'.
-  (all conflicts fixed: run "git rebase --continue")
-
-Changes to be committed:
-  (use "git restore --staged <file>..." to unstage)
-	modified:   hello_world.cpp
-```
-Продолжаем перебазирование:
-```sh
-git rebase --continue 
-```
-```
-[detached HEAD c54003c] style: format code from myself to Mozilla style
- 1 file changed, 11 insertions(+), 9 deletions(-)
-Successfully rebased and updated refs/heads/patch2.
-```
-
-### Сделайте force push в ветку `patch2`
-
-```sh
-git push --force origin patch2
-```
-
-```
-Enumerating objects: 5, done.
-Counting objects: 100% (5/5), done.
-Delta compression using up to 2 threads
-Compressing objects: 100% (3/3), done.
-Writing objects: 100% (3/3), 520 bytes | 520.00 KiB/s, done.
-Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
-remote: Resolving deltas: 100% (1/1), completed with 1 local object.
-To https://github.com/satodim/lab_02_rework2.git
- + eb3d595...c54003c patch2 -> patch2 (forced update)
-```
-
-### Убедитесь, что в pull-request пропали конфликтны.
-
-Делаем это уже привычным для нас образом
-
-```sh
-gh pr view --json number,title,author,commits,mergeable
-```
-
-```
-{
-  "author": {
-    "id": "U_kgDOCjA-pg",
-    "is_bot": false,
-    "login": "satodim",
-    "name": "satodim"
-  },
-  "commits": [
-    {
-      "authoredDate": "2026-04-15T06:18:31Z",
-      "authors": [
-        {
-          "email": "vovkakursk8@gmail.com",
-          "id": "U_kgDOCjA-pg",
-          "login": "satodim",
-          "name": "satodim"
-        }
-      ],
-      "committedDate": "2026-04-15T06:38:21Z",
-      "messageBody": "",
-      "messageHeadline": "style: format code from myself to Mozilla style",
-      "oid": "c54003cefcd2c0b961c3aea2c90197f4b787467f"
-    }
-  ],
-  "mergeable": "UNKNOWN",
-  "number": 4,
-  "title": "Style: transform style code style: format code from myself to Mozilla style"
-}
-```
-
-Теперь переменная `mergeable` равна `UNKNOWN`.
-
-### Вмержите pull-request `patch2` -> `master`.
-
-```sh
-git switch main
-it merge patch2
-```
-*Вывод:*
-```sh
-Updating be64376..c54003c
-Fast-forward
- hello_world.cpp | 20 +++++++++++---------
- 1 file changed, 11 insertions(+), 9 deletions(-)
-```
-
-И пушим на удаленный репозиторий:
-```sh
-git push --force origin main 
-```
-
-```
-Total 0 (delta 0), reused 0 (delta 0), pack-reused 0
-To https://github.com/satodim/lab_02_rework2.git
-   be64376..c54003c  main -> main
-```
-
