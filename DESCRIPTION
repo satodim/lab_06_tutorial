@@ -1,0 +1,20 @@
+This package provides a static C++ library for formatted text output.
+
+The 'print' library offers simple functions to output text to various
+streams (stdout, files, string streams) with formatting support.
+
+Key features:
+- Thread-safe output operations
+- Support for custom delimiters and line endings
+- Easy integration with existing C++ projects
+
+Example usage:
+    #include <print.hpp>
+    print("Hello, World!", std::cout);
+
+This package contains the development files (headers and static library)
+required to build applications using the print library.
+
+Dependencies: C++14 compatible compiler, CMake 3.10 or higher.
+
+This library is distributed under the MIT license.

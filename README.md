@@ -23,7 +23,7 @@ cd third-party/gtest && git checkout release-1.8.1 && cd ../..
 ```
 *Вывод:*
 ```sh
-Cloning into '/home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest'...
+Cloning into '/home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/third-party/gtest'...
 remote: Enumerating objects: 28627, done.
 remote: Counting objects: 100% (61/61), done.
 remote: Compressing objects: 100% (46/46), done.
@@ -98,12 +98,12 @@ cmake --build _build
 Получил ошибку из-за старой версии
 *Фикс:*
 ```sh
-vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ rm -rf _build
-vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cd third-party/gtest
-vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest$ git checkout release-1.8.1
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_06_tutorial$ rm -rf _build
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_06_tutorial$ cd third-party/gtest
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_06_tutorial/third-party/gtest$ git checkout release-1.8.1
 HEAD is now at 2fe3bd99 Merge pull request #1433 from dsacre/fix-clang-warnings
-vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest$ cd ../..
-vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cmake -H. -B_build \
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_06_tutorial/third-party/gtest$ cd ../..
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_06_tutorial$ cmake -H. -B_build \
   -DBUILD_TESTS=ON \
   -DCMAKE_CXX_FLAGS="-Wno-error -Wno-maybe-uninitialized"
 ```
@@ -168,8 +168,8 @@ This warning is for project developers.  Use -Wno-dev to suppress it.
 -- Found Threads: TRUE  
 -- Configuring done (0.5s)
 -- Generating done (0.0s)
--- Build files have been written to: /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build
-vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cmake --build _build
+-- Build files have been written to: /home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/_build
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_06_tutorial$ cmake --build _build
 [  8%] Building CXX object CMakeFiles/print.dir/sources/print.cpp.o
 [ 16%] Linking CXX static library libprint.a
 [ 16%] Built target print
@@ -197,17 +197,17 @@ cmake --build _build --target test -- ARGS=--verbose
 ```
 *ВЫводы:*
 ```sh
-vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cmake --build _build --target test
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_06_tutorial$ cmake --build _build --target test
 Running tests...
-Test project /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build
+Test project /home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/_build
     Start 1: check
 1/1 Test #1: check ............................   Passed    0.00 sec
 
 100% tests passed, 0 tests failed out of 1
 
 Total Test time (real) =   0.01 sec
-vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ _build/check
-Running main() from /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest/googletest/src/gtest_main.cc
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_06_tutorial$ _build/check
+Running main() from /home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/third-party/gtest/googletest/src/gtest_main.cc
 [==========] Running 1 test from 1 test case.
 [----------] Global test environment set-up.
 [----------] 1 test from Print
@@ -218,11 +218,11 @@ Running main() from /home/vboxuser/satodim/workspace/workspace/projects/lab_05_t
 [----------] Global test environment tear-down
 [==========] 1 test from 1 test case ran. (1 ms total)
 [  PASSED  ] 1 test.
-vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_05_tutorial$ cmake --build _build --target test -- ARGS=--verbose
+vboxuser@Linuxoid:~/satodim/workspace/workspace/projects/lab_06_tutorial$ cmake --build _build --target test -- ARGS=--verbose
 Running tests...
-UpdateCTestConfiguration  from :/home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build/DartConfiguration.tcl
-UpdateCTestConfiguration  from :/home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build/DartConfiguration.tcl
-Test project /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build
+UpdateCTestConfiguration  from :/home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/_build/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/_build/DartConfiguration.tcl
+Test project /home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/_build
 Constructing a list of tests
 Done constructing a list of tests
 Updating test list for fixtures
@@ -232,10 +232,10 @@ Checking test dependency graph end
 test 1
     Start 1: check
 
-1: Test command: /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build/check
-1: Working Directory: /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/_build
+1: Test command: /home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/_build/check
+1: Working Directory: /home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/_build
 1: Test timeout computed to be: 10000000
-1: Running main() from /home/vboxuser/satodim/workspace/workspace/projects/lab_05_tutorial/third-party/gtest/googletest/src/gtest_main.cc
+1: Running main() from /home/vboxuser/satodim/workspace/workspace/projects/lab_06_tutorial/third-party/gtest/googletest/src/gtest_main.cc
 1: [==========] Running 1 test from 1 test case.
 1: [----------] Global test environment set-up.
 1: [----------] 1 test from Print
@@ -316,6 +316,6 @@ Compressing objects: 100% (30/30), done.
 Writing objects: 100% (50/50), 13.65 KiB | 6.83 MiB/s, done.
 Total 50 (delta 12), reused 36 (delta 10), pack-reused 0
 remote: Resolving deltas: 100% (12/12), done.
-To https://github.com/satodim/lab_05_tutorial
+To https://github.com/satodim/lab_06_tutorial
  * [new branch]      main -> main
 ```
